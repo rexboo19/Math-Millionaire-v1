@@ -17,6 +17,10 @@ class MathMillionaireGame {
         // Background music state
         this.backgroundMusicPlaying = false;
         
+        // Topic prefixes that receive a 1.2× score bonus for matching classes
+        this.weightedTopics = ['EG', 'DE', 'SP'];
+        this.topicScoreMultiplier = 1.2;
+        
         // Prize ladder amounts — one score per question (10 questions total)
         this.prizeLadder = [
             1000, 5000, 10000, 50000, 75000, 100000, 250000, 500000, 750000, 1000000
@@ -44,6 +48,19 @@ class MathMillionaireGame {
     // Number of questions played in one game (matches prize ladder length)
     getGameQuestionCount() {
         return Math.min(this.questions.length, this.prizeLadder.length);
+    }
+    
+    // Calculate score for a class based on prize ladder and question topic weighting
+    getClassScoreForQuestion(className, prizeAmount, questionTopic) {
+        const topic = (questionTopic || '').trim().toUpperCase();
+        const classNameUpper = (className || '').trim().toUpperCase();
+        
+        // EG/DE/SP topics: matching class prefix gets 1.2×, others get base prize
+        if (this.weightedTopics.includes(topic) && classNameUpper.startsWith(topic)) {
+            return Math.round(prizeAmount * this.topicScoreMultiplier);
+        }
+        
+        return prizeAmount;
     }
     
     // Initialize game (async to load classes from Firebase)
@@ -305,12 +322,16 @@ class MathMillionaireGame {
             localStorage.setItem(`gameSession_${this.sessionId}_question`, '0');
             
             const scoresKey = `gameSession_${this.sessionId}_classScores`;
+            const totalsKey = `gameSession_${this.sessionId}_classTotals`;
             if (!localStorage.getItem(scoresKey)) {
                 const initialScores = {};
                 this.classes.forEach(className => {
                     initialScores[className] = 0;
                 });
                 localStorage.setItem(scoresKey, JSON.stringify(initialScores));
+            }
+            if (!localStorage.getItem(totalsKey)) {
+                localStorage.setItem(totalsKey, JSON.stringify(this.buildEmptyClassTotals()));
             }
             return;
         }
@@ -320,8 +341,8 @@ class MathMillionaireGame {
         await window.dataStore.set(`gameSession_${this.sessionId}_active`, 'true');
         await window.dataStore.set(`gameSession_${this.sessionId}_question`, '0');
         
-        // Initialize class scores for this session
         const scoresKey = `gameSession_${this.sessionId}_classScores`;
+        const totalsKey = `gameSession_${this.sessionId}_classTotals`;
         const existingScores = await window.dataStore.get(scoresKey);
         if (!existingScores) {
             const initialScores = {};
@@ -329,6 +350,10 @@ class MathMillionaireGame {
                 initialScores[className] = 0;
             });
             await window.dataStore.set(scoresKey, initialScores);
+        }
+        const existingTotals = await window.dataStore.get(totalsKey);
+        if (!existingTotals) {
+            await window.dataStore.set(totalsKey, this.buildEmptyClassTotals());
         }
     }
     
@@ -563,15 +588,12 @@ class MathMillionaireGame {
         
         if (isCorrect) {
             this.score = this.prizeLadder[this.currentQuestion];
-            // Record host result and update class scores from prize ladder
             await this.markHostAnswerResult(answeredQuestionIndex, true);
-            await this.syncClassScoresToStorage(this.sessionId);
+            await this.awardClassScoresOnHostCorrect(answeredQuestionIndex, question);
             await this.soundManager.playAndWait('correct');
         } else {
             this.soundManager.play('incorrect');
             await this.markHostAnswerResult(answeredQuestionIndex, false);
-            await this.syncClassScoresToStorage(this.sessionId);
-            // Brief pause so the wrong answer highlight is visible
             await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         
@@ -612,6 +634,112 @@ class MathMillionaireGame {
             };
             modalElement.addEventListener('hidden.bs.modal', onHidden);
         });
+    }
+    
+    // Build empty score objects for every registered class
+    buildEmptyClassTotals() {
+        const totals = {};
+        this.classes.forEach((className) => {
+            totals[className] = { totalScore: 0, correctAnswers: 0, totalQuestions: 0 };
+        });
+        return totals;
+    }
+    
+    // Firebase may return vote arrays as objects — normalize to [a,b,c,d]
+    normalizeVoteArray(voteData) {
+        if (!voteData) return null;
+        if (Array.isArray(voteData) || typeof voteData === 'object') {
+            return [0, 1, 2, 3].map((i) => parseInt(voteData[i], 10) || 0);
+        }
+        return null;
+    }
+    
+    async loadClassTotals(sessionId) {
+        const key = `gameSession_${sessionId}_classTotals`;
+        if (window.dataStore) {
+            const totals = await window.dataStore.get(key);
+            return totals || {};
+        }
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : {};
+    }
+    
+    async saveClassTotals(sessionId, totals) {
+        const key = `gameSession_${sessionId}_classTotals`;
+        if (window.dataStore) {
+            await window.dataStore.set(key, totals);
+        } else {
+            localStorage.setItem(key, JSON.stringify(totals));
+        }
+    }
+    
+    // Award class scores when host answers correctly (with topic-based weighting)
+    async awardClassScoresOnHostCorrect(questionIndex, question) {
+        if (!this.sessionId) return;
+        if (!this.classes.length) await this.loadClasses();
+        
+        const sessionId = this.sessionId;
+        const awardedKey = `gameSession_${sessionId}_scored_${questionIndex}`;
+        
+        let alreadyAwarded = false;
+        if (window.dataStore) {
+            alreadyAwarded = await window.dataStore.get(awardedKey);
+        } else {
+            alreadyAwarded = localStorage.getItem(awardedKey) === 'true';
+        }
+        if (alreadyAwarded) return;
+        
+        const prizeAmount = this.prizeLadder[questionIndex] || 0;
+        const questionTopic = question.topic || '';
+        const correctIndex = parseInt(question.correct, 10);
+        const totals = await this.loadClassTotals(sessionId);
+        
+        this.classes.forEach((className) => {
+            if (!totals[className]) {
+                totals[className] = { totalScore: 0, correctAnswers: 0, totalQuestions: 0 };
+            }
+        });
+        
+        const classVotesKey = `gameSession_${sessionId}_classVotes_${questionIndex}`;
+        let classVotes = null;
+        if (window.dataStore) {
+            classVotes = await window.dataStore.get(classVotesKey);
+        } else {
+            const stored = localStorage.getItem(classVotesKey);
+            classVotes = stored ? JSON.parse(stored) : null;
+        }
+        
+        const awardToClass = (className) => {
+            const points = this.getClassScoreForQuestion(className, prizeAmount, questionTopic);
+            totals[className].totalScore += points;
+            totals[className].correctAnswers += 1;
+            totals[className].totalQuestions += 1;
+        };
+        
+        let awardedAnyClass = false;
+        const voteClassNames = classVotes ? Object.keys(classVotes) : [];
+        
+        voteClassNames.forEach((className) => {
+            const voteArray = this.normalizeVoteArray(classVotes[className]);
+            if (!voteArray) return;
+            if ((voteArray[correctIndex] || 0) > 0) {
+                awardToClass(className);
+                awardedAnyClass = true;
+            }
+        });
+        
+        // No audience votes yet — award all registered classes with topic weighting
+        if (!awardedAnyClass) {
+            this.classes.forEach((className) => awardToClass(className));
+        }
+        
+        await this.saveClassTotals(sessionId, totals);
+        if (window.dataStore) {
+            await window.dataStore.set(awardedKey, true);
+        } else {
+            localStorage.setItem(awardedKey, 'true');
+        }
+        await this.syncClassScoresToStorage(sessionId);
     }
     
     // Record whether the host answered a question correctly
@@ -694,7 +822,8 @@ class MathMillionaireGame {
             question: question.question,
             options: question.options,
             questionNumber: this.currentQuestion + 1,
-            correct: question.correct
+            correct: question.correct,
+            topic: question.topic || ''
         };
         
         if (window.dataStore) {
@@ -1079,151 +1208,30 @@ class MathMillionaireGame {
         }
     }
     
-    // Calculate scores for all classes based on prize ladder
+    // Return persisted class scores for display
     async calculateClassScores(sessionId) {
         if (!sessionId) return {};
         
-        const classScores = {};
-        let classes = [];
+        const totals = await this.loadClassTotals(sessionId);
+        let classes = this.classes;
         
-        // Try to load classes from Firebase first, fallback to localStorage
-        if (window.dataStore) {
-            const stored = await window.dataStore.get('mathMillionaireClasses');
-            if (stored && Array.isArray(stored)) {
-                classes = stored;
+        if (!classes.length) {
+            if (window.dataStore) {
+                const stored = await window.dataStore.get('mathMillionaireClasses');
+                if (stored && Array.isArray(stored)) classes = stored;
             } else {
                 const localStored = localStorage.getItem('mathMillionaireClasses');
-                if (localStored) {
-                    classes = JSON.parse(localStored);
-                } else {
-                    return {};
-                }
+                if (localStored) classes = JSON.parse(localStored);
             }
-        } else {
-            const allClasses = localStorage.getItem('mathMillionaireClasses');
-            if (!allClasses) return {};
-            classes = JSON.parse(allClasses);
         }
         
-        // Initialize scores for all classes (always recalculate from scratch)
-        classes.forEach(className => {
-            classScores[className] = {
-                totalScore: 0,
-                correctAnswers: 0,
-                totalQuestions: 0
-            };
+        classes.forEach((className) => {
+            if (!totals[className]) {
+                totals[className] = { totalScore: 0, correctAnswers: 0, totalQuestions: 0 };
+            }
         });
         
-        // Check all questions on the prize ladder
-        for (let qIndex = 0; qIndex < this.prizeLadder.length; qIndex++) {
-            // Only award points after the host answered correctly on the main page
-            const hostCorrect = await this.getHostAnswerResult(sessionId, qIndex);
-            if (!hostCorrect) continue;
-            
-            // Score for this question equals the prize ladder value
-            const prizeAmount = this.prizeLadder[qIndex] || 0;
-            
-            // Get class votes for this question using dataStore
-            const classVotesKey = `gameSession_${sessionId}_classVotes_${qIndex}`;
-            let classVotesData = null;
-            
-            if (window.dataStore) {
-                classVotesData = await window.dataStore.get(classVotesKey);
-            } else {
-                const localStored = localStorage.getItem(classVotesKey);
-                if (localStored) {
-                    classVotesData = JSON.parse(localStored);
-                }
-            }
-            
-            if (!classVotesData || Object.keys(classVotesData).length === 0) {
-                // No audience votes yet — award all classes when host answers correctly
-                classes.forEach((className) => {
-                    classScores[className].totalScore += prizeAmount;
-                    classScores[className].correctAnswers += 1;
-                    classScores[className].totalQuestions += 1;
-                });
-                continue;
-            }
-            
-            const classVotes = classVotesData;
-            
-            // Get the correct answer for this question from stored data
-            let correctAnswerIndex = null;
-            
-            // First try to get from stored question data using dataStore
-            let storedQuestionData = null;
-            if (window.dataStore) {
-                storedQuestionData = await window.dataStore.get(`gameSession_${sessionId}_questionData_${qIndex}`);
-            } else {
-                const localStored = localStorage.getItem(`gameSession_${sessionId}_questionData_${qIndex}`);
-                if (localStored) {
-                    storedQuestionData = JSON.parse(localStored);
-                }
-            }
-            
-            if (storedQuestionData) {
-                correctAnswerIndex = storedQuestionData.correct;
-            } else if (qIndex < this.questions.length) {
-                // Fallback to current questions array
-                correctAnswerIndex = this.questions[qIndex].correct;
-            } else {
-                // Skip if we don't have the correct answer
-                continue;
-            }
-            
-            // Parse and validate correctAnswerIndex is a valid number (0-3)
-            // Convert to integer to handle string values, and ensure it's within valid range
-            let parsedCorrectIndex;
-            if (typeof correctAnswerIndex === 'string') {
-                parsedCorrectIndex = parseInt(correctAnswerIndex, 10);
-            } else {
-                parsedCorrectIndex = parseInt(correctAnswerIndex);
-            }
-            
-            // Validate the parsed index
-            if (isNaN(parsedCorrectIndex) || parsedCorrectIndex < 0 || parsedCorrectIndex > 3) {
-                // Skip this question if correct answer is invalid
-                continue;
-            }
-            
-            // Check each class's votes
-            Object.keys(classVotes).forEach(className => {
-                if (!classScores[className]) {
-                    classScores[className] = {
-                        totalScore: 0,
-                        correctAnswers: 0,
-                        totalQuestions: 0
-                    };
-                }
-                
-                const classVoteArray = classVotes[className];
-                // Ensure classVoteArray is an array with 4 elements
-                if (!Array.isArray(classVoteArray) || classVoteArray.length !== 4) {
-                    return; // Skip this class if votes array is invalid
-                }
-                
-                const totalVotes = classVoteArray.reduce((sum, count) => sum + (parseInt(count) || 0), 0);
-                
-                if (totalVotes > 0) {
-                    classScores[className].totalQuestions++;
-                    
-                    // Count how many members of the class voted for the correct answer
-                    // Ensure we're accessing the array with a valid integer index
-                    const correctVotes = parseInt(classVoteArray[parsedCorrectIndex]) || 0;
-                    
-                    // Always add to correctAnswers (tracks total correct votes across all questions)
-                    classScores[className].correctAnswers += correctVotes;
-                    
-                    // Award the full prize ladder value once per class with correct votes
-                    if (correctVotes > 0) {
-                        classScores[className].totalScore += prizeAmount;
-                    }
-                }
-            });
-        }
-        
-        return classScores;
+        return totals;
     }
     
     // Render class scores in a leaderboard format with bar chart
@@ -1466,7 +1474,8 @@ class MathMillionaireGame {
             if (Object.keys(classVotes).length > 0) {
                 statsHTML += '<div class="mb-4"><h5 class="mb-3">Votes by Class:</h5>';
                 Object.keys(classVotes).forEach(className => {
-                    const classVoteArray = classVotes[className];
+                    const classVoteArray = this.normalizeVoteArray(classVotes[className]);
+                    if (!classVoteArray) return;
                     const classTotal = classVoteArray.reduce((sum, count) => sum + count, 0);
                     if (classTotal > 0) {
                         statsHTML += `<div class="mb-2" style="font-size: 1.1rem;">
