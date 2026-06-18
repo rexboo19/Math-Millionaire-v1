@@ -563,9 +563,14 @@ class MathMillionaireGame {
         
         if (isCorrect) {
             this.score = this.prizeLadder[this.currentQuestion];
+            // Record host result and update class scores from prize ladder
+            await this.markHostAnswerResult(answeredQuestionIndex, true);
+            await this.syncClassScoresToStorage(this.sessionId);
             await this.soundManager.playAndWait('correct');
         } else {
             this.soundManager.play('incorrect');
+            await this.markHostAnswerResult(answeredQuestionIndex, false);
+            await this.syncClassScoresToStorage(this.sessionId);
             // Brief pause so the wrong answer highlight is visible
             await new Promise((resolve) => setTimeout(resolve, 1500));
         }
@@ -609,7 +614,44 @@ class MathMillionaireGame {
         });
     }
     
-    // Award points to a class
+    // Record whether the host answered a question correctly
+    async markHostAnswerResult(questionIndex, isCorrect) {
+        if (!this.sessionId) return;
+        const key = `gameSession_${this.sessionId}_hostCorrect_${questionIndex}`;
+        if (window.dataStore) {
+            await window.dataStore.set(key, isCorrect);
+        } else {
+            localStorage.setItem(key, isCorrect ? 'true' : 'false');
+        }
+    }
+    
+    // Read whether the host answered a question correctly
+    async getHostAnswerResult(sessionId, questionIndex) {
+        const key = `gameSession_${sessionId}_hostCorrect_${questionIndex}`;
+        if (window.dataStore) {
+            const value = await window.dataStore.get(key);
+            return value === true || value === 'true';
+        }
+        return localStorage.getItem(key) === 'true';
+    }
+    
+    // Persist calculated class totals so statistics and Firebase listeners stay in sync
+    async syncClassScoresToStorage(sessionId) {
+        if (!sessionId) return;
+        const calculated = await this.calculateClassScores(sessionId);
+        const scoresKey = `gameSession_${sessionId}_classScores`;
+        const flatScores = {};
+        Object.keys(calculated).forEach((className) => {
+            flatScores[className] = calculated[className].totalScore;
+        });
+        if (window.dataStore) {
+            await window.dataStore.set(scoresKey, flatScores);
+        } else {
+            localStorage.setItem(scoresKey, JSON.stringify(flatScores));
+        }
+    }
+    
+    // Award points to a class (legacy flat storage — prefer syncClassScoresToStorage)
     async awardClassPoints(className, points) {
         if (!this.sessionId) return;
         
@@ -1063,19 +1105,6 @@ class MathMillionaireGame {
             classes = JSON.parse(allClasses);
         }
         
-        // First, get scores from host's correct answers using dataStore
-        const scoresKey = `gameSession_${sessionId}_classScores`;
-        let storedScores = null;
-        
-        if (window.dataStore) {
-            storedScores = await window.dataStore.get(scoresKey);
-        } else {
-            const localStored = localStorage.getItem(scoresKey);
-            if (localStored) {
-                storedScores = JSON.parse(localStored);
-            }
-        }
-        
         // Initialize scores for all classes (always recalculate from scratch)
         classes.forEach(className => {
             classScores[className] = {
@@ -1087,7 +1116,11 @@ class MathMillionaireGame {
         
         // Check all questions on the prize ladder
         for (let qIndex = 0; qIndex < this.prizeLadder.length; qIndex++) {
-            // Calculate prize for this question (original scoring method)
+            // Only award points after the host answered correctly on the main page
+            const hostCorrect = await this.getHostAnswerResult(sessionId, qIndex);
+            if (!hostCorrect) continue;
+            
+            // Score for this question equals the prize ladder value
             const prizeAmount = this.prizeLadder[qIndex] || 0;
             
             // Get class votes for this question using dataStore
@@ -1103,7 +1136,15 @@ class MathMillionaireGame {
                 }
             }
             
-            if (!classVotesData) continue;
+            if (!classVotesData || Object.keys(classVotesData).length === 0) {
+                // No audience votes yet — award all classes when host answers correctly
+                classes.forEach((className) => {
+                    classScores[className].totalScore += prizeAmount;
+                    classScores[className].correctAnswers += 1;
+                    classScores[className].totalQuestions += 1;
+                });
+                continue;
+            }
             
             const classVotes = classVotesData;
             
@@ -1174,20 +1215,10 @@ class MathMillionaireGame {
                     // Always add to correctAnswers (tracks total correct votes across all questions)
                     classScores[className].correctAnswers += correctVotes;
                     
-                    // Award points for each correct answer: correctVotes × prizeAmount
+                    // Award the full prize ladder value once per class with correct votes
                     if (correctVotes > 0) {
-                        classScores[className].totalScore += (correctVotes * prizeAmount);
+                        classScores[className].totalScore += prizeAmount;
                     }
-                }
-            });
-        }
-        
-        // If stored scores exist, use them for totalScore (host's manual adjustments)
-        // But keep the recalculated correctAnswers
-        if (storedScores) {
-            classes.forEach(className => {
-                if (classScores[className] && storedScores[className] !== undefined) {
-                    classScores[className].totalScore = storedScores[className];
                 }
             });
         }
