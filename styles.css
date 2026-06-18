@@ -1,0 +1,585 @@
+/* Custom CSS for Math Millionaire Game */
+
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh;
+    color: white;
+}
+
+.game-container {
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Logo Styles — flows in header grid, no absolute positioning */
+.logo-container {
+    display: inline-block;
+}
+
+.yci-logo {
+    max-height: 120px;
+    max-width: 160px;
+    height: auto;
+    width: auto;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+}
+
+/* QR Code — flows in header grid, no absolute positioning */
+.qr-code-corner {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 12px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    text-align: center;
+    max-width: 180px;
+}
+
+/* Music Controls Styles - Next to quit button */
+.controls-section .music-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 15px;
+    vertical-align: middle;
+}
+
+.controls-section .music-controls .music-mute-btn {
+    min-width: 40px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+}
+
+.controls-section .music-controls .music-volume-slider {
+    width: 120px;
+    height: 6px;
+    cursor: pointer;
+}
+
+.controls-section .music-controls .music-volume-value {
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    min-width: 45px;
+    text-align: center;
+}
+
+.qr-code-label {
+    color: #FFD700;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.qr-code-corner-container {
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.qr-code-corner-container canvas,
+.qr-code-corner-container img {
+    max-width: 140px;
+    max-height: 140px;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* Header Styles */
+.header-section {
+    margin-bottom: 24px;
+}
+
+.game-title {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #FFD700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 10px;
+}
+
+.game-subtitle {
+    font-size: 1.2rem;
+    color: #E0E0E0;
+    font-weight: 300;
+}
+
+.admin-link {
+    margin-top: 15px;
+}
+
+.admin-link .btn {
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.admin-link .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Game Area Styles */
+.game-area {
+    margin-bottom: 30px;
+}
+
+.question-panel {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.question-number {
+    font-size: 1.5rem;
+    color: #FFD700;
+    margin-bottom: 20px;
+    font-weight: 700;
+    text-align: left;
+}
+
+.question-text {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    line-height: 1.4;
+    text-align: left;
+    font-weight: 400;
+}
+
+.question-image-container {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.question-image-container img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.options-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.option {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.2rem;
+}
+
+.option:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #FFD700;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.option.selected {
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #FFD700;
+}
+
+.option.correct {
+    background: rgba(40, 167, 69, 0.8);
+    border-color: #28a745;
+    animation: correctPulse 0.6s ease-in-out;
+}
+
+.option.incorrect {
+    background: rgba(220, 53, 69, 0.8);
+    border-color: #dc3545;
+    animation: incorrectShake 0.6s ease-in-out;
+}
+
+.option-letter {
+    background: #FFD700;
+    color: #1e3c72;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.option-text {
+    flex: 1;
+    font-weight: 500;
+}
+
+/* Prize Ladder Styles */
+.prize-ladder {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ladder-title {
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.ladder-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ladder-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.ladder-item.current {
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #FFD700;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.ladder-item.passed {
+    background: rgba(40, 167, 69, 0.3);
+    border-color: #28a745;
+}
+
+.ladder-amount {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #FFD700;
+}
+
+.ladder-level {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Lifelines Styles */
+.lifelines-container {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.lifelines-container h5 {
+    color: #FFD700;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.lifelines {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.lifeline-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lifeline-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #FFD700;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.lifeline-btn.used {
+    background: rgba(128, 128, 128, 0.3);
+    border-color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Controls Styles */
+.controls-section {
+    margin-bottom: 20px;
+}
+
+.btn {
+    margin: 0 10px;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Animations */
+@keyframes correctPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes incorrectShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Modal Styles */
+.modal-content {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    border: 2px solid #FFD700;
+    border-radius: 15px;
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-title {
+    color: #FFD700;
+    font-weight: 700;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-title {
+        font-size: 2rem;
+    }
+    
+    .question-text {
+        font-size: 1.5rem;
+    }
+    
+    .options-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .lifelines {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .lifeline-btn {
+        width: 200px;
+        justify-content: center;
+    }
+    
+    .yci-logo {
+        max-height: 90px;
+        max-width: 120px;
+    }
+    
+    .qr-code-corner {
+        max-width: 160px;
+        padding: 10px;
+    }
+    
+    .qr-code-corner-container canvas,
+    .qr-code-corner-container img {
+        max-width: 120px;
+        max-height: 120px;
+    }
+    
+    .controls-section .music-controls {
+        display: block;
+        margin: 10px auto 0;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .game-container {
+        padding: 10px;
+    }
+    
+    .question-panel {
+        padding: 20px;
+    }
+    
+    .yci-logo {
+        max-height: 70px;
+        max-width: 100px;
+    }
+    
+    .qr-code-corner {
+        max-width: 140px;
+    }
+    
+    .qr-code-corner-container canvas,
+    .qr-code-corner-container img {
+        max-width: 100px;
+        max-height: 100px;
+    }
+    
+    .controls-section .music-controls {
+        margin: 10px auto 0;
+    }
+    
+    .controls-section .music-controls .music-volume-slider {
+        width: 100px;
+    }
+    
+    .option {
+        padding: 15px;
+        font-size: 1rem;
+    }
+    
+    .ladder-amount {
+        font-size: 1rem;
+    }
+}
+
+/* Loading Animation */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #FFD700;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Success/Error Messages */
+.message {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-weight: 600;
+}
+
+.message.success {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+.message.error {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.message.info {
+    background: rgba(23, 162, 184, 0.2);
+    border: 1px solid #17a2b8;
+    color: #17a2b8;
+}
+
+/* QR Code Modal Styles */
+.qr-code-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    margin: 20px auto;
+    max-width: 300px;
+}
+
+.qr-code-container canvas {
+    border-radius: 5px;
+}
+
+.game-url-container {
+    margin-top: 15px;
+}
+
+.game-url-container input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 0.9rem;
+    padding: 8px;
+}
+
+.game-url-container input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #FFD700;
+    color: white;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+#copy-url-btn {
+    transition: all 0.3s ease;
+}
+
+#copy-url-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}

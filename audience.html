@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audience - Math Millionaire</title>
+    <!-- CRITICAL: This is audience.html - DO NOT REPLACE WITH admin.html -->
+    <script>
+        // Immediate check - if we see admin page content, redirect
+        (function() {
+            // Check if the page title is wrong
+            if (document.title && document.title.includes('Admin')) {
+                const session = new URLSearchParams(window.location.search).get('session');
+                const newUrl = window.location.origin + window.location.pathname.replace(/admin\.html/i, 'audience.html').replace(/[^/]*$/, 'audience.html') + (session ? '?session=' + session : '');
+                console.error('WRONG PAGE DETECTED! Redirecting to:', newUrl);
+                window.location.replace(newUrl);
+            }
+            
+            // Also check the URL path
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('admin.html') || (!path.includes('audience.html') && path.includes('audience'))) {
+                const session = new URLSearchParams(window.location.search).get('session');
+                let correctPath = path.replace(/admin\.html/i, 'audience.html');
+                if (!correctPath.includes('audience.html')) {
+                    correctPath = correctPath.replace(/[^/]*$/, 'audience.html');
+                }
+                const newUrl = window.location.origin + correctPath + (session ? '?session=' + session : '');
+                console.error('URL PATH MISMATCH! Redirecting to:', newUrl);
+                window.location.replace(newUrl);
+            }
+        })();
+    </script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Audience-specific styles */
+        .audience-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            color: white;
+        }
+        
+        .audience-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .audience-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+        
+        .question-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .question-number-badge {
+            background: #FFD700;
+            color: #1e3c72;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .question-text-audience {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        
+        .audience-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .audience-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #FFD700;
+            transform: translateY(-2px);
+        }
+        
+        .audience-option.selected {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: #FFD700;
+        }
+        
+        .audience-option.voted {
+            background: rgba(40, 167, 69, 0.3);
+            border-color: #28a745;
+            cursor: default;
+        }
+        
+        .waiting-screen {
+            text-align: center;
+            padding: 50px 20px;
+        }
+        
+        .waiting-icon {
+            font-size: 4rem;
+            color: #FFD700;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .status-message {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .vote-confirmation {
+            background: rgba(40, 167, 69, 0.3);
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+    <!-- Additional safeguard: Check for admin page content -->
+    <script>
+        // Check after DOM starts loading
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if admin page elements exist (indicating wrong file)
+            if (document.querySelector('.admin-container') || 
+                document.getElementById('question-form') ||
+                (document.querySelector('h1') && document.querySelector('h1').textContent.includes('Admin'))) {
+                console.error('ADMIN PAGE CONTENT DETECTED IN audience.html!');
+                const session = new URLSearchParams(window.location.search).get('session');
+                // Build correct URL dynamically
+                const pathParts = window.location.pathname.split('/');
+                pathParts[pathParts.length - 1] = 'audience.html';
+                const correctUrl = window.location.origin + pathParts.join('/') + (session ? '?session=' + session : '');
+                console.error('Redirecting to:', correctUrl);
+                alert('Error: Wrong page content detected. The audience.html file on GitHub appears to be incorrect. Please check your GitHub repository.');
+                // Try to redirect anyway
+                window.location.replace(correctUrl);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="audience-container">
+        <div class="audience-header">
+            <h1 class="audience-title">
+                <i class="fas fa-users"></i> Audience View
+            </h1>
+            <p>Join the game and vote on questions!</p>
+            <!-- Debug: Verify this is audience.html -->
+            <script>
+                if (document.title !== 'Audience - Math Millionaire') {
+                    console.error('Page title mismatch! Expected: Audience - Math Millionaire, Got:', document.title);
+                }
+                console.log('Audience page loaded successfully. Path:', window.location.pathname);
+            </script>
+            
+            <!-- Class Selection -->
+            <div class="class-selection-container mt-3">
+                <label for="class-select" class="form-label text-white">
+                    <i class="fas fa-graduation-cap"></i> Select Your Class:
+                </label>
+                <select class="form-select" id="class-select" style="max-width: 300px; margin: 0 auto;">
+                    <option value="">Choose a class...</option>
+                </select>
+                <div id="class-selection-message" class="mt-2" style="display: none;">
+                    <small class="text-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Please select your class before voting.
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Waiting Screen (shown when no active question) -->
+        <div id="waiting-screen" class="waiting-screen" style="display: none;">
+            <div class="waiting-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <h3>Waiting for the next question...</h3>
+            <p class="text-muted">The game will update automatically when a new question appears.</p>
+        </div>
+        
+        <!-- Question Screen -->
+        <div id="question-screen" style="display: none;">
+            <div class="question-card">
+                <div class="question-number-badge" id="question-number-badge">
+                    Question 1
+                </div>
+                <div class="question-text-audience" id="question-text-audience">
+                    Loading question...
+                </div>
+                <div id="options-container-audience">
+                    <!-- Options will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Vote Confirmation -->
+            <div id="vote-confirmation" class="vote-confirmation" style="display: none;">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>Vote Submitted!</h5>
+                <p>Thank you for voting. Waiting for results...</p>
+            </div>
+        </div>
+        
+        <!-- Error/Status Messages -->
+        <div id="status-message" class="status-message" style="display: none;">
+            <p id="status-text"></p>
+        </div>
+    </div>
+    
+    <!-- MathJax for mathematical notation -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    <!-- Firebase Helper -->
+    <script src="firebase-helper.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Audience Script -->
+    <script>
+        // Audience page functionality
+        class AudienceView {
+            constructor() {
+                // Get session ID from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                this.sessionId = urlParams.get('session');
+                this.currentQuestionIndex = -1;
+                this.hasVoted = false;
+                this.selectedClass = null; // Store selected class
+                this.voteInterval = null;
+                this.questionCheckInterval = null;
+                this.failedSessionChecks = 0; // Track failed session checks
+                
+                // Debug: Log URL information
+                console.log('Full URL:', window.location.href);
+                console.log('URL search:', window.location.search);
+                console.log('URL hash:', window.location.hash);
+                
+                if (!this.sessionId) {
+                    // Try to get from URL hash as fallback
+                    const hash = window.location.hash.substring(1);
+                    if (hash) {
+                        this.sessionId = hash;
+                        console.log('Found session ID in hash:', this.sessionId);
+                    }
+                }
+                
+                if (!this.sessionId) {
+                    this.showError('No game session found. Please scan the QR code from the main game.');
+                    console.error('No session ID found in URL parameters or hash');
+                    console.error('Current URL:', window.location.href);
+                    return;
+                }
+                
+                console.log('Initializing with session ID:', this.sessionId);
+                this.initialize();
+            }
+            
+            // Initialize the audience view
+            async initialize() {
+                // Load and populate class selection
+                await this.loadClasses();
+                
+                // Add class selection change handler
+                document.getElementById('class-select').addEventListener('change', (e) => {
+                    this.selectedClass = e.target.value;
+                    // Store selected class in localStorage for this session
+                    if (this.selectedClass) {
+                        localStorage.setItem(`audience_class_${this.sessionId}`, this.selectedClass);
+                        document.getElementById('class-selection-message').style.display = 'none';
+                    }
+                });
+                
+                // Load previously selected class if any
+                const savedClass = localStorage.getItem(`audience_class_${this.sessionId}`);
+                if (savedClass) {
+                    document.getElementById('class-select').value = savedClass;
+                    this.selectedClass = savedClass;
+                }
+                
+                // Check if session is active (with retry logic)
+                this.checkSessionWithRetry();
+                
+                // Poll for session and question updates every 2 seconds
+                this.questionCheckInterval = setInterval(async () => {
+                    // Check session periodically
+                    await this.checkSessionWithRetry();
+                    // Check for new questions
+                    await this.checkForNewQuestion();
+                }, 2000);
+                
+                // Check for new questions immediately
+                this.checkForNewQuestion();
+            }
+            
+            // Load classes from Firebase or localStorage
+            async loadClasses() {
+                const classSelect = document.getElementById('class-select');
+                let classes = [];
+                
+                // Try to load from Firebase first, fallback to localStorage
+                if (window.dataStore) {
+                    const stored = await window.dataStore.get('mathMillionaireClasses');
+                    if (stored && Array.isArray(stored)) {
+                        classes = stored;
+                    } else {
+                        // Try localStorage as fallback
+                        const localStored = localStorage.getItem('mathMillionaireClasses');
+                        if (localStored) {
+                            classes = JSON.parse(localStored);
+                        }
+                    }
+                } else {
+                    // Fallback to localStorage only
+                    const stored = localStorage.getItem('mathMillionaireClasses');
+                    if (stored) {
+                        classes = JSON.parse(stored);
+                    }
+                }
+                
+                if (classes.length > 0) {
+                    // Add classes to dropdown
+                    classes.forEach(className => {
+                        const option = document.createElement('option');
+                        option.value = className;
+                        option.textContent = className;
+                        classSelect.appendChild(option);
+                    });
+                } else {
+                    // No classes available
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No classes available';
+                    option.disabled = true;
+                    classSelect.appendChild(option);
+                }
+            }
+            
+            // Check if session is active (more lenient - allows waiting)
+            async checkSession() {
+                if (!this.sessionId) {
+                    this.showError('No session ID found in URL. Please scan the QR code from the main game.');
+                    if (this.questionCheckInterval) {
+                        clearInterval(this.questionCheckInterval);
+                    }
+                    return false;
+                }
+                
+                // Check if session exists using dataStore (Firebase or localStorage)
+                let isActive = null;
+                
+                if (window.dataStore) {
+                    isActive = await window.dataStore.get(`gameSession_${this.sessionId}_active`);
+                } else {
+                    // Fallback to localStorage
+                    isActive = localStorage.getItem(`gameSession_${this.sessionId}_active`);
+                }
+                
+                // Debug: Log session check
+                console.log('Session ID:', this.sessionId);
+                console.log('Session active status:', isActive);
+                if (window.dataStore && window.dataStore.useFirebase) {
+                    console.log('Using Firebase for session data');
+                } else {
+                    console.log('Using localStorage for session data');
+                    console.log('All session keys:', Object.keys(localStorage).filter(key => key.includes(this.sessionId)));
+                }
+                
+                if (isActive === 'true' || isActive === true) {
+                    // Session is active, hide any error messages
+                    const statusMessage = document.getElementById('status-message');
+                    if (statusMessage && statusMessage.style.display === 'block') {
+                        statusMessage.style.display = 'none';
+                    }
+                    return true;
+                } else {
+                    // Session not found yet - this is OK, we'll keep polling
+                    // Don't show error immediately, allow time for session to be created
+                    // Only show error after multiple failed attempts
+                    return false;
+                }
+            }
+            
+            // Check session with retry logic
+            async checkSessionWithRetry() {
+                const isValid = await this.checkSession();
+                if (!isValid) {
+                    this.failedSessionChecks++;
+                    // Only show error after 5 failed checks (10 seconds)
+                    if (this.failedSessionChecks >= 5) {
+                        let hasSessionData = false;
+                        if (window.dataStore && window.dataStore.useFirebase) {
+                            // Check Firebase
+                            const active = await window.dataStore.get(`gameSession_${this.sessionId}_active`);
+                            hasSessionData = active !== null;
+                        } else {
+                            // Check localStorage
+                            hasSessionData = Object.keys(localStorage).some(key => key.includes(this.sessionId));
+                        }
+                        
+                        if (!hasSessionData) {
+                            if (window.dataStore && window.dataStore.useFirebase) {
+                                this.showError(`<strong>Session Not Found</strong><br><br>
+                                Game session "${this.sessionId}" cannot be found in Firebase.<br><br>
+                                <strong>Please check:</strong><br>
+                                1. The game is running on the main device<br>
+                                2. Firebase is properly configured<br>
+                                3. Both devices have internet connection<br><br>
+                                <small>Current session ID: ${this.sessionId}</small>`);
+                            } else {
+                                this.showError(`<strong>Session Not Found</strong><br><br>
+                                Game session "${this.sessionId}" cannot be found.<br><br>
+                                <strong>Firebase is not configured.</strong> Please set up Firebase to enable cross-device functionality.<br><br>
+                                <small>Current session ID: ${this.sessionId}</small>`);
+                            }
+                        } else {
+                            this.showError('Game session not found or has ended. Please join a new game.');
+                        }
+                    }
+                } else {
+                    // Session found, reset counter
+                    this.failedSessionChecks = 0;
+                }
+            }
+            
+            // Check for new question
+            async checkForNewQuestion() {
+                let questionIndex = null;
+                let questionData = null;
+                
+                if (window.dataStore) {
+                    questionIndex = await window.dataStore.get(`gameSession_${this.sessionId}_question`);
+                    questionData = await window.dataStore.get(`gameSession_${this.sessionId}_questionData`);
+                } else {
+                    // Fallback to localStorage
+                    questionIndex = localStorage.getItem(`gameSession_${this.sessionId}_question`);
+                    const questionDataStr = localStorage.getItem(`gameSession_${this.sessionId}_questionData`);
+                    if (questionDataStr) {
+                        questionData = JSON.parse(questionDataStr);
+                    }
+                }
+                
+                if (questionIndex !== null && questionData) {
+                    const newQuestionIndex = parseInt(questionIndex);
+                    
+                    // If it's a new question, reset voting state
+                    if (newQuestionIndex !== this.currentQuestionIndex) {
+                        this.currentQuestionIndex = newQuestionIndex;
+                        this.hasVoted = false;
+                        this.loadQuestion(questionData);
+                    }
+                } else {
+                    // No question available, show waiting screen
+                    this.showWaitingScreen();
+                }
+            }
+            
+            // Load question data
+            loadQuestion(questionData) {
+                document.getElementById('waiting-screen').style.display = 'none';
+                document.getElementById('question-screen').style.display = 'block';
+                document.getElementById('vote-confirmation').style.display = 'none';
+                
+                // Update question number
+                document.getElementById('question-number-badge').textContent = 
+                    `Question ${questionData.questionNumber}`;
+                
+                // Update question text
+                document.getElementById('question-text-audience').innerHTML = 
+                    this.renderMath(questionData.question);
+                
+                // Clear and create options
+                const optionsContainer = document.getElementById('options-container-audience');
+                optionsContainer.innerHTML = '';
+                
+                questionData.options.forEach((option, index) => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'audience-option';
+                    optionElement.setAttribute('data-option-index', index);
+                    optionElement.innerHTML = `
+                        <span class="option-letter" style="background: #FFD700; color: #1e3c72; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                            ${String.fromCharCode(65 + index)}
+                        </span>
+                        <span class="option-text" style="flex: 1;">${this.renderMath(option)}</span>
+                    `;
+                    
+                    // Add click handler if not voted yet
+                    if (!this.hasVoted) {
+                        optionElement.addEventListener('click', () => {
+                            this.submitVote(index);
+                        });
+                    }
+                    
+                    optionsContainer.appendChild(optionElement);
+                });
+                
+                // Re-render MathJax
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([optionsContainer]).catch((err) => {
+                        console.log('MathJax rendering error:', err);
+                    });
+                }
+            }
+            
+            // Submit vote
+            async submitVote(optionIndex) {
+                if (this.hasVoted) return;
+                
+                // Check if class is selected
+                if (!this.selectedClass || this.selectedClass === '') {
+                    document.getElementById('class-selection-message').style.display = 'block';
+                    return;
+                }
+                
+                // Mark as voted
+                this.hasVoted = true;
+                
+                // Update UI
+                document.querySelectorAll('.audience-option').forEach((opt, idx) => {
+                    opt.classList.remove('selected');
+                    if (idx === optionIndex) {
+                        opt.classList.add('selected', 'voted');
+                    }
+                    // Disable clicking
+                    opt.style.pointerEvents = 'none';
+                });
+                
+                // Store vote using dataStore (Firebase or localStorage)
+                await this.storeVote(optionIndex);
+                
+                // Show confirmation
+                document.getElementById('vote-confirmation').style.display = 'block';
+            }
+            
+            // Store vote in dataStore
+            async storeVote(optionIndex) {
+                const votesKey = `gameSession_${this.sessionId}_votes_${this.currentQuestionIndex}`;
+                let votes = [0, 0, 0, 0];
+                
+                // Get existing votes
+                if (window.dataStore) {
+                    const existingVotes = await window.dataStore.get(votesKey);
+                    votes = existingVotes || [0, 0, 0, 0];
+                } else {
+                    const existingVotes = localStorage.getItem(votesKey);
+                    if (existingVotes) {
+                        votes = JSON.parse(existingVotes);
+                    }
+                }
+                
+                // Increment vote count for selected option
+                votes[optionIndex]++;
+                
+                // Save votes
+                if (window.dataStore) {
+                    await window.dataStore.set(votesKey, votes);
+                } else {
+                    localStorage.setItem(votesKey, JSON.stringify(votes));
+                }
+                
+                // Store vote with class information for statistics
+                const classVotesKey = `gameSession_${this.sessionId}_classVotes_${this.currentQuestionIndex}`;
+                let classVotes = {};
+                
+                if (window.dataStore) {
+                    const existingClassVotes = await window.dataStore.get(classVotesKey);
+                    classVotes = existingClassVotes || {};
+                } else {
+                    const existingClassVotes = localStorage.getItem(classVotesKey);
+                    if (existingClassVotes) {
+                        classVotes = JSON.parse(existingClassVotes);
+                    }
+                }
+                
+                // Initialize class votes array if not exists
+                if (!classVotes[this.selectedClass]) {
+                    classVotes[this.selectedClass] = [0, 0, 0, 0];
+                }
+                classVotes[this.selectedClass][optionIndex]++;
+                
+                if (window.dataStore) {
+                    await window.dataStore.set(classVotesKey, classVotes);
+                } else {
+                    localStorage.setItem(classVotesKey, JSON.stringify(classVotes));
+                }
+            }
+            
+            // Show waiting screen
+            showWaitingScreen() {
+                document.getElementById('waiting-screen').style.display = 'block';
+                document.getElementById('question-screen').style.display = 'none';
+            }
+            
+            // Show error message
+            showError(message) {
+                const statusMessage = document.getElementById('status-message');
+                const statusText = document.getElementById('status-text');
+                statusText.innerHTML = message; // Use innerHTML to support HTML formatting
+                statusMessage.style.display = 'block';
+                statusMessage.style.background = 'rgba(220, 53, 69, 0.3)';
+                statusMessage.style.border = '2px solid #dc3545';
+            }
+            
+            // Render math notation (same as main game)
+            renderMath(text) {
+                if (!text) return '';
+                
+                // Convert common math symbols to LaTeX
+                let processedText = text
+                    .replace(/√(\w+)/g, '\\sqrt{$1}')
+                    .replace(/√\(([^)]+)\)/g, '\\sqrt{$1}')
+                    .replace(/(\w+)\^(\w+)/g, '$1^{$2}')
+                    .replace(/(\w+)\^(\d+)/g, '$1^{$2}')
+                    .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}')
+                    .replace(/π/g, '\\pi')
+                    .replace(/α/g, '\\alpha')
+                    .replace(/β/g, '\\beta')
+                    .replace(/γ/g, '\\gamma')
+                    .replace(/δ/g, '\\delta')
+                    .replace(/θ/g, '\\theta')
+                    .replace(/λ/g, '\\lambda')
+                    .replace(/μ/g, '\\mu')
+                    .replace(/σ/g, '\\sigma')
+                    .replace(/φ/g, '\\phi')
+                    .replace(/ω/g, '\\omega')
+                    .replace(/±/g, '\\pm')
+                    .replace(/≠/g, '\\neq')
+                    .replace(/≤/g, '\\leq')
+                    .replace(/≥/g, '\\geq')
+                    .replace(/∞/g, '\\infty')
+                    .replace(/∑/g, '\\sum')
+                    .replace(/∫/g, '\\int')
+                    .replace(/∂/g, '\\partial')
+                    .replace(/(\w+)_(\w+)/g, '$1_{$2}')
+                    .replace(/(\w+)_(\d+)/g, '$1_{$2}');
+                
+                // Wrap in math delimiters if it contains LaTeX
+                if (processedText.includes('\\')) {
+                    return `$${processedText}$`;
+                }
+                
+                return text;
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AudienceView();
+        });
+    </script>
+</body>
+</html>
+
